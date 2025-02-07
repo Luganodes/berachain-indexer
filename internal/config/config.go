@@ -75,9 +75,9 @@ func LoadConfig() *Config {
 			"0x5468188b6036c5311a3f18fc548c42ccb48a0cdcb9d339e0b2ba38aed4fae36d": "IncentivesProcessed",
 		},
 
-		StartBlock:      uint64((getEnvInt("START_BLOCK", ptr(502415)))),
-		ValidatorId:     getEnvString("VALIDATOR_ID", ptr("0x23d16af92704d442bc300aa31299866de14a6288681110f6c1ffc1f0f276881e")),
-		ValidatorPubkey: getEnvString("VALIDATOR_PUBKEY", ptr("0xb466bd0d3587e98a22f21d0fbc3b24c0a71d00abd58a1303440f94f6f6d91651dc9044534f44cd86994552d2700c56f5")),
+		StartBlock:      uint64((getEnvInt("START_BLOCK", ptr(0)))),
+		ValidatorId:     getEnvString("VALIDATOR_ID", ptr("0x45c895c56a1a03d9eaff78d5ea7d90e1949da7b33c9d959459db1f861dbfaa69")),
+		ValidatorPubkey: getEnvString("VALIDATOR_PUBKEY", ptr("0x960052c5509caa280218f3ecf3da7ba5bf4ec20b97e6c52700dd93515ef4e963813aa92a8731c9e137b1027dbc77102f")),
 
 		BatchSize:         uint64(getEnvInt("BATCH_SIZE", ptr(5000))),
 		ConcurrentBatches: uint64(getEnvInt("CONCURRENT_BATCHES", ptr(15))),
@@ -96,19 +96,19 @@ func loadContracts() Contracts {
 		panic(fmt.Sprintf("Error reading ABI: %v", err))
 	}
 
-	blockRewardContract := getEnvString("BLOCK_REWARD_CONTRACT", ptr("0x25A37b8E0a090Aa952F037B8534ace17AC3DbC60"))
+	blockRewardContract := getEnvString("BLOCK_REWARD_CONTRACT", ptr("0x1ae7dd7ae06f6c58b4524d9c1f816094b1bccd8e"))
 	blockRewardABI, err := readABI("abi/blockReward.json")
 	if err != nil {
 		panic(fmt.Sprintf("Error reading ABI: %v", err))
 	}
 
-	distributionContract := getEnvString("DISTRIBUTION_CONTRACT", ptr("0x211bE45338B7C6d5721B5543Eb868547088Aca39"))
+	distributionContract := getEnvString("DISTRIBUTION_CONTRACT", ptr("0xd2f19a79b026fb636a7c300bf5947df113940761"))
 	distributionABI, err := readABI("abi/distribution.json")
 	if err != nil {
 		panic(fmt.Sprintf("Error reading ABI: %v", err))
 	}
 
-	vaultContracts := strings.Split(getEnvString("VAULT_CONTRACTS", ptr("0xb930dcbfb60b5599836f7ab4b7053fb4d881940e")), ",")
+	vaultContracts := strings.Split(getEnvString("VAULT_CONTRACTS", ptr("0x086f82fa0ca310cc835a9db4f53697687ef149c7,0x17376ad6167a5592fbeaa42e6068c132474a513d,0x6649bc987a7c0fb0199c523de1b1b330cd0457a8,0xc2baa8443cda8ebe51a640905a8e6bc4e1f9872c,0xf99be47baf0c22b7eb5eac42c8d91b9942dc7e84")), ",")
 	vaultContractAddresses := make([]common.Address, len(vaultContracts))
 	for i, contract := range vaultContracts {
 		vaultContractAddresses[i] = common.HexToAddress(contract)
