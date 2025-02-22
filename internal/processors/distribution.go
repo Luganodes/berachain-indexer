@@ -2,6 +2,7 @@ package processors
 
 import (
 	"bera_indexer/internal/models"
+	"bera_indexer/internal/utils"
 	"context"
 	"fmt"
 
@@ -11,7 +12,7 @@ import (
 
 func (p *processor) processDistribution(ctx context.Context, log types.Log) error {
 	validatorId := log.Topics[1].Hex()
-	if validatorId != p.config.ValidatorId {
+	if !utils.IsValidValidator(p.config.Validators, validatorId) {
 		return nil
 	}
 
@@ -33,7 +34,7 @@ func (p *processor) processDistribution(ctx context.Context, log types.Log) erro
 	amount := decoded[0]
 
 	distribution := models.Distribution{
-		Validator:       p.config.ValidatorId,
+		Validator:       validatorId,
 		Receiver:        receiver.Hex(),
 		Amount:          fmt.Sprintf("%v", amount),
 		TransactionHash: transaction.TransactionHash,

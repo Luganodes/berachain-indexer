@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bera_indexer/internal/config"
 	"context"
 	"fmt"
 	"log"
@@ -35,4 +36,13 @@ func PrintNextExecution(c *cron.Cron) {
 		nextRun := entries[0].Next
 		log.Printf("Next cron execution scheduled for: %v", nextRun)
 	}
+}
+
+func IsValidValidator(validators []config.Validator, idOrPubkey string) bool {
+	for _, v := range validators {
+		if v.Id == idOrPubkey || v.Pubkey == idOrPubkey {
+			return true
+		}
+	}
+	return false
 }

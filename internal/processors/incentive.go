@@ -2,6 +2,7 @@ package processors
 
 import (
 	"bera_indexer/internal/models"
+	"bera_indexer/internal/utils"
 	"context"
 	"fmt"
 
@@ -11,7 +12,7 @@ import (
 
 func (p *processor) processIncentive(ctx context.Context, log types.Log) error {
 	validatorId := log.Topics[1].Hex()
-	if validatorId != p.config.ValidatorId {
+	if !utils.IsValidValidator(p.config.Validators, validatorId) {
 		return nil
 	}
 
@@ -34,7 +35,7 @@ func (p *processor) processIncentive(ctx context.Context, log types.Log) error {
 	amount := decoded[1]
 
 	incentive := models.Incentive{
-		Validator:       p.config.ValidatorId,
+		Validator:       validatorId,
 		Token:           token.Hex(),
 		BGTEmitted:      fmt.Sprintf("%v", bgtEmitted),
 		Amount:          fmt.Sprintf("%v", amount),

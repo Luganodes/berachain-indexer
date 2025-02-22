@@ -27,6 +27,11 @@ type Contracts struct {
 	VaultContractAbi     abi.ABI
 }
 
+type Validator struct {
+	Id     string
+	Pubkey string
+}
+
 type Config struct {
 	Db         DbConfig
 	RPC_URL    string
@@ -35,8 +40,7 @@ type Config struct {
 	Contracts Contracts
 	Events    map[string]string
 
-	ValidatorId     string
-	ValidatorPubkey string
+	Validators []Validator
 
 	BatchSize         uint64
 	ConcurrentBatches int
@@ -75,10 +79,9 @@ func LoadConfig() *Config {
 			"0x5468188b6036c5311a3f18fc548c42ccb48a0cdcb9d339e0b2ba38aed4fae36d": "IncentivesProcessed",
 		},
 
-		StartBlock:      uint64((getEnvInt("START_BLOCK", ptr(0)))),
-		ValidatorId:     getEnvString("VALIDATOR_ID", ptr("0x45c895c56a1a03d9eaff78d5ea7d90e1949da7b33c9d959459db1f861dbfaa69")),
-		ValidatorPubkey: getEnvString("VALIDATOR_PUBKEY", ptr("0x960052c5509caa280218f3ecf3da7ba5bf4ec20b97e6c52700dd93515ef4e963813aa92a8731c9e137b1027dbc77102f")),
+		Validators: loadValidators(),
 
+		StartBlock:        uint64((getEnvInt("START_BLOCK", ptr(0)))),
 		BatchSize:         uint64(getEnvInt("BATCH_SIZE", ptr(5000))),
 		ConcurrentBatches: getEnvInt("CONCURRENT_BATCHES", ptr(15)),
 		MaxRetries:        getEnvInt("MAX_RETRIES", ptr(3)),
@@ -86,6 +89,24 @@ func LoadConfig() *Config {
 	}
 	log.Println("✅ Config Loaded")
 	return &config
+}
+
+func loadValidators() []Validator {
+	validatorStr := getEnvString("VALIDATORS", nil)
+
+	var validators []Validator
+	pairs := strings.Split(validatorStr, ",")
+	for _, pair := range pairs {
+		parts := strings.Split(pair, ":")
+		if len(parts) != 2 {
+			panic(fmt.Sprintf("Invalid validator format in env. Expected '<pubkey>:<validator_id>', got '%s'", pair))
+		}
+		validators = append(validators, Validator{
+			Pubkey: parts[0],
+			Id:     parts[1],
+		})
+	}
+	return validators
 }
 
 func loadContracts() Contracts {

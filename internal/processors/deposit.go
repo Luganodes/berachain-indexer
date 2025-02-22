@@ -2,6 +2,7 @@ package processors
 
 import (
 	"bera_indexer/internal/models"
+	"bera_indexer/internal/utils"
 	"context"
 	"fmt"
 
@@ -25,9 +26,10 @@ func (p *processor) processDeposit(ctx context.Context, log types.Log) error {
 	}
 
 	pubkey := "0x" + common.Bytes2Hex(decoded[0].([]byte))
-	if pubkey != p.config.ValidatorPubkey {
+	if !utils.IsValidValidator(p.config.Validators, pubkey) {
 		return nil
 	}
+
 	credentials := "0x" + common.Bytes2Hex(decoded[1].([]byte))
 	amount := decoded[2]
 	signature := "0x" + common.Bytes2Hex(decoded[3].([]byte))
