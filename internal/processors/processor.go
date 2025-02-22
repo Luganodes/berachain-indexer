@@ -42,7 +42,7 @@ func (p *processor) ProcessTransactionLogs(ctx context.Context, logs []types.Log
 
 	sort.Slice(logs, func(i, j int) bool {
 		if logs[i].BlockNumber == logs[j].BlockNumber {
-			return logs[i].TxIndex < logs[j].TxIndex
+			return logs[i].Index < logs[j].Index
 		}
 		return logs[i].BlockNumber < logs[j].BlockNumber
 	})
