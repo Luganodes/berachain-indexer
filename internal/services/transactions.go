@@ -35,15 +35,15 @@ func SyncTransactions(dbRepository *repository.DbRepository, ethereumRepository 
 	if err != nil {
 		return fmt.Errorf("failed to fetch contract logs: %w", err)
 	}
+	log.Printf("Fetched %d logs", len(transactionLogs))
 
 	if err := processor.ProcessTransactionLogs(ctx, transactionLogs, config); err != nil {
 		return err
 	}
+	log.Printf("Processed %d logs", len(transactionLogs))
 
 	if err := blockRepository.UpdateLastBlockProcessed(ctx, latestBlock); err != nil {
 		return fmt.Errorf("failed to update last processed block: %w", err)
 	}
-
-	log.Printf("Processed %d logs", len(transactionLogs))
 	return nil
 }

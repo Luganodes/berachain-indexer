@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -86,60 +87,50 @@ func (r *ethereumRepository) FetchContractLogs(ctx context.Context, startBlock, 
 		batchSize         = r.config.BatchSize
 	)
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	totalBlocks := endBlock - startBlock + 1
-	bar := progressbar.Default(int64(totalBlocks))
+	bar := progressbar.Default(int64(endBlock - startBlock + 1))
+	defer bar.Finish()
 
 	g, ctx := errgroup.WithContext(ctx)
-	semaphore := make(chan struct{}, concurrentBatches)
-	logsChan := make(chan []types.Log)
+	g.SetLimit(concurrentBatches)
 
 	var logs []types.Log
-	var mu sync.Mutex
-	go func() {
-		for batchLogs := range logsChan {
-			mu.Lock()
-			logs = append(logs, batchLogs...)
-			mu.Unlock()
-		}
-	}()
+	var logsMu sync.Mutex
+	var barMu sync.Mutex
 
 	for start := startBlock; start <= endBlock; start += batchSize {
-		end := min(start+batchSize, endBlock)
-		semaphore <- struct{}{}
+		end := min(start+batchSize-1, endBlock)
 
-		start, end := start, end // Avoid closure capture issues
-		g.Go(func() error {
-			defer func() { <-semaphore }()
-			batchLogs, err := r.fetchLogsBatch(ctx, start, end)
-			if err != nil {
-				cancel()
-				return err
-			}
+		start, end := start, end // Prevent closure capture issue
+		g.Go(func() (err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("panic occurred while fetching logs: %v", r)
+				}
+			}()
 
 			select {
-			case logsChan <- batchLogs:
 			case <-ctx.Done():
 				return ctx.Err()
+			default:
+				err := r.fetchLogsBatch(ctx, start, end, &logs, &logsMu)
+				if err != nil {
+					return err
+				}
+				barMu.Lock()
+				bar.Add(int(end - start + 1))
+				barMu.Unlock()
+				return nil
 			}
-
-			bar.Add(int(end - start))
-			return nil
 		})
 	}
 
 	if err := g.Wait(); err != nil {
-		close(logsChan)
 		return nil, err
 	}
-	close(logsChan)
-
 	return logs, nil
 }
 
-func (r *ethereumRepository) fetchLogsBatch(ctx context.Context, fromBlock, toBlock uint64) ([]types.Log, error) {
+func (r *ethereumRepository) fetchLogsBatch(ctx context.Context, fromBlock, toBlock uint64, logs *[]types.Log, mu *sync.Mutex) error {
 	eventHashes := []common.Hash{}
 	for eventHash := range r.config.Events {
 		eventHashes = append(eventHashes, common.HexToHash(eventHash))
@@ -152,8 +143,6 @@ func (r *ethereumRepository) fetchLogsBatch(ctx context.Context, fromBlock, toBl
 	}
 	contractAddresses = append(contractAddresses, r.config.Contracts.VaultContracts...)
 
-	// todo: need to check if ToBlock is inclusive or exclusive
-	// assming exclusive and making an extra request
 	query := ethereum.FilterQuery{
 		Addresses: contractAddresses,
 		Topics:    [][]common.Hash{eventHashes},
@@ -164,11 +153,20 @@ func (r *ethereumRepository) fetchLogsBatch(ctx context.Context, fromBlock, toBl
 	maxRetries := r.config.MaxRetries
 
 	for retries := 0; retries < int(maxRetries); retries++ {
-		if logs, err := r.client.FilterLogs(ctx, query); err == nil {
-			return logs, nil
+		if response, err := r.client.FilterLogs(ctx, query); err == nil {
+			mu.Lock()
+			*logs = append(*logs, response...)
+			mu.Unlock()
+			return nil
 		}
-		time.Sleep(time.Second * time.Duration(retries+1))
-	}
 
-	return nil, fmt.Errorf("failed to fetch contract logs after %d retries", maxRetries)
+		jitter := time.Duration(rand.Int63n(int64(time.Second)))
+		backoff := time.Second*time.Duration(1<<retries) + jitter
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return fmt.Errorf("failed to fetch logs from %d to %d after %d retries", fromBlock, toBlock, maxRetries)
 }

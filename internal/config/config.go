@@ -39,7 +39,7 @@ type Config struct {
 	ValidatorPubkey string
 
 	BatchSize         uint64
-	ConcurrentBatches uint64
+	ConcurrentBatches int
 	MaxRetries        int
 	CronSchedule      string
 }
@@ -80,7 +80,7 @@ func LoadConfig() *Config {
 		ValidatorPubkey: getEnvString("VALIDATOR_PUBKEY", ptr("0x960052c5509caa280218f3ecf3da7ba5bf4ec20b97e6c52700dd93515ef4e963813aa92a8731c9e137b1027dbc77102f")),
 
 		BatchSize:         uint64(getEnvInt("BATCH_SIZE", ptr(5000))),
-		ConcurrentBatches: uint64(getEnvInt("CONCURRENT_BATCHES", ptr(15))),
+		ConcurrentBatches: getEnvInt("CONCURRENT_BATCHES", ptr(15)),
 		MaxRetries:        getEnvInt("MAX_RETRIES", ptr(3)),
 		CronSchedule:      getEnvString("CRON_SCHEDULE", ptr("0 5 * * * *")),
 	}
