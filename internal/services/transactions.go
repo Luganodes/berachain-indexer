@@ -29,21 +29,20 @@ func SyncTransactions(dbRepository *repository.DbRepository, ethereumRepository 
 		return nil
 	}
 
-	log.Printf("Fetching logs from block %d to %d", startBlock, latestBlock)
+	log.Printf("Processing logs from block number %d to %d", startBlock, latestBlock)
+	currentBlock := startBlock
+	for currentBlock < latestBlock {
+		endBlock := min(currentBlock+config.ProcessLogsBatchSize-1, latestBlock)
 
-	transactionLogs, err := (*ethereumRepository).FetchContractLogs(ctx, startBlock, latestBlock)
-	if err != nil {
-		return fmt.Errorf("failed to fetch contract logs: %w", err)
-	}
-	log.Printf("Fetched %d logs", len(transactionLogs))
+		if err := processor.ProcessTransactionLogs(ctx, currentBlock, endBlock); err != nil {
+			return err
+		}
+		if err := blockRepository.UpdateLastBlockProcessed(ctx, endBlock); err != nil {
+			return fmt.Errorf("failed to update last processed block: %w", err)
+		}
 
-	if err := processor.ProcessTransactionLogs(ctx, transactionLogs, config); err != nil {
-		return err
-	}
-	log.Printf("Processed %d logs", len(transactionLogs))
-
-	if err := blockRepository.UpdateLastBlockProcessed(ctx, latestBlock); err != nil {
-		return fmt.Errorf("failed to update last processed block: %w", err)
+		log.Printf("Processed logs from block number %d to %d", currentBlock, endBlock)
+		currentBlock = endBlock + 1
 	}
 	return nil
 }

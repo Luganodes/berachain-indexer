@@ -42,10 +42,9 @@ type Config struct {
 
 	Validators []Validator
 
-	BatchSize         uint64
-	ConcurrentBatches int
-	MaxRetries        int
-	CronSchedule      string
+	GetLogsBatchSize     uint64
+	ProcessLogsBatchSize uint64
+	CronSchedule         string
 }
 
 type DbConfig struct {
@@ -81,11 +80,10 @@ func LoadConfig() *Config {
 
 		Validators: loadValidators(),
 
-		StartBlock:        uint64((getEnvInt("START_BLOCK", ptr(0)))),
-		BatchSize:         uint64(getEnvInt("BATCH_SIZE", ptr(5000))),
-		ConcurrentBatches: getEnvInt("CONCURRENT_BATCHES", ptr(15)),
-		MaxRetries:        getEnvInt("MAX_RETRIES", ptr(3)),
-		CronSchedule:      getEnvString("CRON_SCHEDULE", ptr("0 5 * * * *")),
+		StartBlock:           uint64((getEnvInt("START_BLOCK", ptr(0)))),
+		GetLogsBatchSize:     uint64(getEnvInt("GET_LOGS_BATCH_SIZE", ptr(5000))),         // adjust depending on your RPC limiations
+		ProcessLogsBatchSize: uint64(getEnvInt("PROCESS_LOGS_BATCH_SIZE", ptr(5000*200))), // too much at once will cause memory issues
+		CronSchedule:         getEnvString("CRON_SCHEDULE", ptr("0 5 * * * *")),
 	}
 	log.Println("✅ Config Loaded")
 	return &config

@@ -2,68 +2,77 @@ package processors
 
 import (
 	"bera_indexer/internal/config"
+	"bera_indexer/internal/processors/events"
 	"bera_indexer/internal/repository"
 	"context"
 	"fmt"
-	"sort"
-
-	"github.com/ethereum/go-ethereum/core/types"
+	"log"
 )
 
-type Processor interface {
-	ProcessTransactionLogs(ctx context.Context, logs []types.Log, config *config.Config) error
+type Processor struct {
+	eventProcessor *events.EventProcessor
+	txProcessor    *transactionProcessor
+	dbRepository   *repository.DbRepository
 }
 
-type processor struct {
-	ethereumRepository *repository.EthereumRepository
-	dbRepository       *repository.DbRepository
-	config             *config.Config
-	eventHandlers      map[string]func(context.Context, types.Log) error
+func NewProcessor(
+	ethereumRepo *repository.EthereumRepository,
+	dbRepo *repository.DbRepository,
+	config *config.Config,
+) *Processor {
+	return &Processor{
+		eventProcessor: events.NewEventProcessor(config),
+		txProcessor:    NewtransactionProcessor(config, *ethereumRepo),
+		dbRepository:   dbRepo,
+	}
 }
 
-func NewProcessor(ethereumRepository *repository.EthereumRepository, dbRepository *repository.DbRepository, config *config.Config) Processor {
-	p := &processor{
-		ethereumRepository: ethereumRepository,
-		dbRepository:       dbRepository,
-		config:             config,
+func (p *Processor) ProcessTransactionLogs(ctx context.Context, startBlock, endBlock uint64) error {
+	log.Printf("Fetching logs from block number %d to %d", startBlock, endBlock)
+	logs, err := p.txProcessor.FetchLogs(ctx, startBlock, endBlock)
+	if err != nil {
+		return err
+	}
+	log.Printf("Fetched %d logs from block number %d to %d", len(logs), startBlock, endBlock)
+
+	events, err := p.eventProcessor.ProcessEvents(logs)
+	if err != nil {
+		return err
 	}
 
-	p.eventHandlers = map[string]func(context.Context, types.Log) error{
-		"Deposit":              p.processDeposit,
-		"BlockRewardProcessed": p.processBlockReward,
-		"IncentivesProcessed":  p.processIncentive,
-		"Distributed":          p.processDistribution,
+	txHashes, blockNumbers, err := p.txProcessor.GetTxHashesAndBlockNumbers(ctx, events)
+	if err != nil {
+		return err
 	}
-
-	return p
-}
-
-func (p *processor) ProcessTransactionLogs(ctx context.Context, logs []types.Log, config *config.Config) error {
-
-	sort.Slice(logs, func(i, j int) bool {
-		if logs[i].BlockNumber == logs[j].BlockNumber {
-			return logs[i].Index < logs[j].Index
-		}
-		return logs[i].BlockNumber < logs[j].BlockNumber
-	})
-
-	for _, log := range logs {
-		if err := p.processLog(ctx, log, config); err != nil {
-			return fmt.Errorf("failed to process log: %v: %w", log.TxHash, err)
-		}
+	txData, err := p.txProcessor.GetTransactionsData(ctx, txHashes)
+	if err != nil {
+		return err
+	}
+	log.Printf("Fetching block timestamps for %d blocks", len(blockNumbers))
+	blockTimestamps, err := (*p.txProcessor.ethereumRepository).GetBlockTimestamps(ctx, blockNumbers)
+	if err != nil {
+		return err
+	}
+	log.Printf("Fetched block timestamps for %d blocks", len(blockTimestamps))
+	p.txProcessor.FillTransactionData(ctx, events, txData, blockTimestamps)
+	if err := p.saveToDatabase(ctx, events); err != nil {
+		return err
 	}
 	return nil
 }
 
-func (p *processor) processLog(ctx context.Context, transactionLog types.Log, config *config.Config) error {
-	eventName, ok := config.Events[transactionLog.Topics[0].Hex()]
-	if !ok {
-		return fmt.Errorf("event not found: %v", transactionLog.Topics[0])
+func (p *Processor) saveToDatabase(ctx context.Context, events *events.ProcessedEvents) error {
+	if err := (*p.dbRepository).AddDeposits(ctx, events.Deposits); err != nil {
+		return fmt.Errorf("failed to bulk add deposits: %w", err)
 	}
-
-	handler, ok := p.eventHandlers[eventName]
-	if !ok {
-		return fmt.Errorf("no handler for event: %s", eventName)
+	if err := (*p.dbRepository).AddBlockRewards(ctx, events.BlockRewards); err != nil {
+		return fmt.Errorf("failed to bulk add block rewards: %w", err)
 	}
-	return handler(ctx, transactionLog)
+	if err := (*p.dbRepository).AddDistributions(ctx, events.Distributions); err != nil {
+		return fmt.Errorf("failed to bulk add distributions: %w", err)
+	}
+	if err := (*p.dbRepository).AddIncentives(ctx, events.Incentives); err != nil {
+		return fmt.Errorf("failed to bulk add incentives: %w", err)
+	}
+	return nil
 }

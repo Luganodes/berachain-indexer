@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"reflect"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -20,10 +21,10 @@ type DbRepository interface {
 	FindLastBlockProcessed(ctx context.Context) (uint64, error)
 	InsertBlock(ctx context.Context, blockNumber uint64) error
 	DoesTransactionExist(ctx context.Context, collectionName string, txHash string, logIndex uint) (bool, error)
-	AddBlockReward(ctx context.Context, blockReward models.BlockReward) error
-	AddDistribution(ctx context.Context, distribution models.Distribution) error
-	AddIncentive(ctx context.Context, incentive models.Incentive) error
-	AddDeposit(ctx context.Context, deposit models.Deposit) error
+	AddDeposits(ctx context.Context, deposits []models.Deposit) error
+	AddBlockRewards(ctx context.Context, blockRewards []models.BlockReward) error
+	AddDistributions(ctx context.Context, distributions []models.Distribution) error
+	AddIncentives(ctx context.Context, incentives []models.Incentive) error
 	UpsertDelegator(ctx context.Context, delegator string, validator string, stakedAmount string) error
 }
 
@@ -98,20 +99,72 @@ func (r *mongoRepository) DoesTransactionExist(ctx context.Context, collectionNa
 	return true, nil
 }
 
-func (r *mongoRepository) AddBlockReward(ctx context.Context, blockReward models.BlockReward) error {
-	return r.Collection("blockRewards").InsertOne(ctx, blockReward)
+func (r *mongoRepository) bulkUpsertDocuments(ctx context.Context, collectionName string, documents interface{}, getFilter func(interface{}) bson.M) error {
+	// Use reflection to get slice length and iterate
+	slice := reflect.ValueOf(documents)
+	if slice.Kind() != reflect.Slice {
+		return fmt.Errorf("documents must be a slice")
+	}
+	if slice.Len() == 0 {
+		return nil
+	}
+
+	operations := make([]mongo.WriteModel, slice.Len())
+	for i := 0; i < slice.Len(); i++ {
+		doc := slice.Index(i).Interface()
+		operations[i] = mongo.NewUpdateOneModel().
+			SetFilter(getFilter(doc)).
+			SetUpsert(true).
+			SetUpdate(bson.D{{Key: "$setOnInsert", Value: doc}})
+	}
+
+	opts := options.BulkWrite().SetOrdered(false)
+	result, err := r.Collection(collectionName).BulkWrite(ctx, operations, opts)
+	if err != nil {
+		return err
+	}
+	log.Printf("Inserted %d documents into %s", result.UpsertedCount, collectionName)
+	return nil
 }
 
-func (r *mongoRepository) AddDistribution(ctx context.Context, distribution models.Distribution) error {
-	return r.Collection("distributions").InsertOne(ctx, distribution)
+func (r *mongoRepository) AddBlockRewards(ctx context.Context, blockRewards []models.BlockReward) error {
+	return r.bulkUpsertDocuments(ctx, "blockRewards", blockRewards, func(doc interface{}) bson.M {
+		reward := doc.(models.BlockReward)
+		return bson.M{
+			"transactionHash": reward.TransactionHash,
+			"logIndex":        reward.LogIndex,
+		}
+	})
 }
 
-func (r *mongoRepository) AddIncentive(ctx context.Context, incentive models.Incentive) error {
-	return r.Collection("incentives").InsertOne(ctx, incentive)
+func (r *mongoRepository) AddDistributions(ctx context.Context, distributions []models.Distribution) error {
+	return r.bulkUpsertDocuments(ctx, "distributions", distributions, func(doc interface{}) bson.M {
+		distribution := doc.(models.Distribution)
+		return bson.M{
+			"transactionHash": distribution.TransactionHash,
+			"logIndex":        distribution.LogIndex,
+		}
+	})
 }
 
-func (r *mongoRepository) AddDeposit(ctx context.Context, deposit models.Deposit) error {
-	return r.Collection("deposits").InsertOne(ctx, deposit)
+func (r *mongoRepository) AddDeposits(ctx context.Context, deposits []models.Deposit) error {
+	return r.bulkUpsertDocuments(ctx, "deposits", deposits, func(doc interface{}) bson.M {
+		deposit := doc.(models.Deposit)
+		return bson.M{
+			"transactionHash": deposit.TransactionHash,
+			"logIndex":        deposit.LogIndex,
+		}
+	})
+}
+
+func (r *mongoRepository) AddIncentives(ctx context.Context, incentives []models.Incentive) error {
+	return r.bulkUpsertDocuments(ctx, "incentives", incentives, func(doc interface{}) bson.M {
+		incentive := doc.(models.Incentive)
+		return bson.M{
+			"transactionHash": incentive.TransactionHash,
+			"logIndex":        incentive.LogIndex,
+		}
+	})
 }
 
 func (r *mongoRepository) UpsertDelegator(ctx context.Context, delegatorAddress string, validator string, stakedAmount string) error {

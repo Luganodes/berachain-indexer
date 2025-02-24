@@ -3,6 +3,7 @@ module bera_indexer
 go 1.23.0
 
 require (
+	github.com/cenkalti/backoff/v5 v5.0.2
 	github.com/ethereum/go-ethereum v1.14.12
 	github.com/joho/godotenv v1.5.1
 	github.com/robfig/cron/v3 v3.0.1
