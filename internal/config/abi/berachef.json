@@ -1,0 +1,45 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "valPubkey",
+        "type": "bytes"
+      }
+    ],
+    "name": "getActiveRewardAllocation",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint64",
+            "name": "startBlock",
+            "type": "uint64"
+          },
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "receiver",
+                "type": "address"
+              },
+              {
+                "internalType": "uint96",
+                "name": "percentageNumerator",
+                "type": "uint96"
+              }
+            ],
+            "internalType": "struct IBeraChef.Weight[]",
+            "name": "weights",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct IBeraChef.RewardAllocation",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

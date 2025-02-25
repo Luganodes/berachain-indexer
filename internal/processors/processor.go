@@ -21,7 +21,7 @@ func NewProcessor(
 	config *config.Config,
 ) *Processor {
 	return &Processor{
-		eventProcessor: events.NewEventProcessor(config),
+		eventProcessor: events.NewEventProcessor(config, dbRepo),
 		txProcessor:    NewtransactionProcessor(config, *ethereumRepo),
 		dbRepository:   dbRepo,
 	}
@@ -35,11 +35,11 @@ func (p *Processor) ProcessTransactionLogs(ctx context.Context, startBlock, endB
 	}
 	log.Printf("Fetched %d logs from block number %d to %d", len(logs), startBlock, endBlock)
 
-	events, err := p.eventProcessor.ProcessEvents(logs)
+	log.Printf("Processing %d events", len(logs))
+	events, err := p.eventProcessor.ProcessEvents(ctx, logs)
 	if err != nil {
 		return err
 	}
-
 	txHashes, blockNumbers, err := p.txProcessor.GetTxHashesAndBlockNumbers(ctx, events)
 	if err != nil {
 		return err

@@ -3,14 +3,23 @@ package events
 import (
 	"bera_indexer/internal/models"
 	"bera_indexer/internal/utils"
+	"context"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-func (p *EventProcessor) processBlockReward(log types.Log) (*models.BlockReward, error) {
+func (p *EventProcessor) processBlockReward(ctx context.Context, log types.Log) (*models.BlockReward, error) {
 	validatorId := log.Topics[1].Hex()
 	if !utils.IsValidValidator(p.config.Validators, validatorId) {
+		return nil, nil
+	}
+
+	exists, err := (*p.dbRepository).DoesTransactionExists(ctx, "blockRewards", log.TxHash.Hex(), log.Index)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if block reward exists: %w", err)
+	}
+	if exists {
 		return nil, nil
 	}
 

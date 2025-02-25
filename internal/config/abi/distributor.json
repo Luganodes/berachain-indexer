@@ -5,29 +5,29 @@
       {
         "indexed": true,
         "internalType": "bytes",
-        "name": "pubkey",
+        "name": "valPubkey",
         "type": "bytes"
       },
       {
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint64",
         "name": "nextTimestamp",
         "type": "uint64"
       },
       {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "baseRate",
-        "type": "uint256"
+        "indexed": true,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "rewardRate",
+        "name": "amount",
         "type": "uint256"
       }
     ],
-    "name": "BlockRewardProcessed",
+    "name": "Distributed",
     "type": "event"
   }
 ]

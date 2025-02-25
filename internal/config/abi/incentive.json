@@ -4,30 +4,30 @@
     "inputs": [
       {
         "indexed": true,
-        "internalType": "bytes",
-        "name": "pubkey",
-        "type": "bytes"
+        "internalType": "address",
+        "name": "token",
+        "type": "address"
       },
       {
         "indexed": false,
-        "internalType": "uint64",
-        "name": "nextTimestamp",
-        "type": "uint64"
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "baseRate",
+        "name": "amount",
         "type": "uint256"
       },
       {
         "indexed": false,
         "internalType": "uint256",
-        "name": "rewardRate",
+        "name": "incentiveRate",
         "type": "uint256"
       }
     ],
-    "name": "BlockRewardProcessed",
+    "name": "IncentiveAdded",
     "type": "event"
   }
 ]

@@ -20,11 +20,11 @@ type Contract struct {
 }
 
 type Contracts struct {
-	DepositContract      Contract
-	BlockRewardContract  Contract
-	DistributionContract Contract
-	VaultContracts       []common.Address
-	VaultContractAbi     abi.ABI
+	DepositContract     Contract
+	BlockRewardContract Contract
+	DistributorContract Contract
+	BerachefContract    Contract
+	IncentiveAbi        abi.ABI
 }
 
 type Validator struct {
@@ -44,6 +44,7 @@ type Config struct {
 
 	GetLogsBatchSize     uint64
 	ProcessLogsBatchSize uint64
+	ConcurrentRequests   int
 	CronSchedule         string
 }
 
@@ -83,6 +84,7 @@ func LoadConfig() *Config {
 		StartBlock:           uint64((getEnvInt("START_BLOCK", ptr(0)))),
 		GetLogsBatchSize:     uint64(getEnvInt("GET_LOGS_BATCH_SIZE", ptr(5000))),         // adjust depending on your RPC limiations
 		ProcessLogsBatchSize: uint64(getEnvInt("PROCESS_LOGS_BATCH_SIZE", ptr(5000*200))), // too much at once will cause memory issues
+		ConcurrentRequests:   getEnvInt("CONCURRENT_REQUESTS", ptr(200)),                  // no. of concurrent RPC calls at a time
 		CronSchedule:         getEnvString("CRON_SCHEDULE", ptr("0 5 * * * *")),
 	}
 	log.Println("✅ Config Loaded")
@@ -121,18 +123,19 @@ func loadContracts() Contracts {
 		panic(fmt.Sprintf("Error reading ABI: %v", err))
 	}
 
-	distributionContract := getEnvString("DISTRIBUTION_CONTRACT", ptr("0xd2f19a79b026fb636a7c300bf5947df113940761"))
-	distributionABI, err := readABI("abi/distribution.json")
+	distributorContract := getEnvString("DISTRIBUTION_CONTRACT", ptr("0xd2f19a79b026fb636a7c300bf5947df113940761"))
+	distributorABI, err := readABI("abi/distributor.json")
 	if err != nil {
 		panic(fmt.Sprintf("Error reading ABI: %v", err))
 	}
 
-	vaultContracts := strings.Split(getEnvString("VAULT_CONTRACTS", ptr("0x086f82fa0ca310cc835a9db4f53697687ef149c7,0x17376ad6167a5592fbeaa42e6068c132474a513d,0x6649bc987a7c0fb0199c523de1b1b330cd0457a8,0xc2baa8443cda8ebe51a640905a8e6bc4e1f9872c,0xf99be47baf0c22b7eb5eac42c8d91b9942dc7e84")), ",")
-	vaultContractAddresses := make([]common.Address, len(vaultContracts))
-	for i, contract := range vaultContracts {
-		vaultContractAddresses[i] = common.HexToAddress(contract)
+	berachefContract := getEnvString("BERACHEF_CONTRACT", ptr("0xdf960E8F3F19C481dDE769edEDD439ea1a63426a"))
+	berachefABI, err := readABI("abi/berachef.json")
+	if err != nil {
+		panic(fmt.Sprintf("Error reading ABI: %v", err))
 	}
-	vaultContractAbi, err := readABI("abi/vault.json")
+
+	incentiveABI, err := readABI("abi/incentive.json")
 	if err != nil {
 		panic(fmt.Sprintf("Error reading ABI: %v", err))
 	}
@@ -146,12 +149,15 @@ func loadContracts() Contracts {
 			Address: common.HexToAddress(blockRewardContract),
 			ABI:     blockRewardABI,
 		},
-		DistributionContract: Contract{
-			Address: common.HexToAddress(distributionContract),
-			ABI:     distributionABI,
+		DistributorContract: Contract{
+			Address: common.HexToAddress(distributorContract),
+			ABI:     distributorABI,
 		},
-		VaultContracts:   vaultContractAddresses,
-		VaultContractAbi: vaultContractAbi,
+		BerachefContract: Contract{
+			Address: common.HexToAddress(berachefContract),
+			ABI:     berachefABI,
+		},
+		IncentiveAbi: incentiveABI,
 	}
 	return contracts
 }

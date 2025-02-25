@@ -3,19 +3,28 @@ package events
 import (
 	"bera_indexer/internal/models"
 	"bera_indexer/internal/utils"
+	"context"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-func (p *EventProcessor) processIncentive(log types.Log) (*models.Incentive, error) {
+func (p *EventProcessor) processIncentive(ctx context.Context, log types.Log) (*models.Incentive, error) {
 	validatorId := log.Topics[1].Hex()
 	if !utils.IsValidValidator(p.config.Validators, validatorId) {
 		return nil, nil
 	}
 
-	abi := p.config.Contracts.VaultContractAbi
+	exists, err := (*p.dbRepository).DoesTransactionExists(ctx, "incentives", log.TxHash.Hex(), log.Index)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if incentive exists: %w", err)
+	}
+	if exists {
+		return nil, nil
+	}
+
+	abi := p.config.Contracts.IncentiveAbi
 	decoded, err := abi.Unpack("IncentivesProcessed", log.Data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unpack log data: %w", err)

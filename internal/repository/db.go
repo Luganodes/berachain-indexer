@@ -20,7 +20,7 @@ type DbRepository interface {
 	Disconnect() error
 	FindLastBlockProcessed(ctx context.Context) (uint64, error)
 	InsertBlock(ctx context.Context, blockNumber uint64) error
-	DoesTransactionExist(ctx context.Context, collectionName string, txHash string, logIndex uint) (bool, error)
+	DoesTransactionExists(ctx context.Context, collectionName string, txHash string, logIndex uint) (bool, error)
 	AddDeposits(ctx context.Context, deposits []models.Deposit) error
 	AddBlockRewards(ctx context.Context, blockRewards []models.BlockReward) error
 	AddDistributions(ctx context.Context, distributions []models.Distribution) error
@@ -88,7 +88,7 @@ func (r *mongoRepository) InsertBlock(ctx context.Context, blockNumber uint64) e
 	return r.Collection("metadata").InsertOne(ctx, models.Metadata{LastBlockProcessed: blockNumber})
 }
 
-func (r *mongoRepository) DoesTransactionExist(ctx context.Context, collectionName string, txHash string, logIndex uint) (bool, error) {
+func (r *mongoRepository) DoesTransactionExists(ctx context.Context, collectionName string, txHash string, logIndex uint) (bool, error) {
 	result := r.Collection(collectionName).FindOne(ctx, bson.M{"transactionHash": txHash, "logIndex": logIndex})
 	if result.Err() != nil {
 		if result.Err() == mongo.ErrNoDocuments {

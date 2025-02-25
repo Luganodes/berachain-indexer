@@ -37,11 +37,24 @@ func (tp *transactionProcessor) FetchLogs(ctx context.Context, startBlock, endBl
 	}
 
 	contractAddresses := []common.Address{
-		tp.config.Contracts.DistributionContract.Address,
+		tp.config.Contracts.DistributorContract.Address,
 		tp.config.Contracts.DepositContract.Address,
 		tp.config.Contracts.BlockRewardContract.Address,
 	}
-	contractAddresses = append(contractAddresses, tp.config.Contracts.VaultContracts...)
+
+	uniqueVaults := make(map[common.Address]struct{})
+	for _, validator := range tp.config.Validators {
+		vaults, err := (*tp.ethereumRepository).GetRewardAllocation(ctx, validator.Pubkey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get reward allocation: %w", err)
+		}
+		for _, vault := range vaults {
+			uniqueVaults[vault] = struct{}{}
+		}
+	}
+	for vault := range uniqueVaults {
+		contractAddresses = append(contractAddresses, vault)
+	}
 
 	logs, err := (*tp.ethereumRepository).FetchContractLogs(ctx, startBlock, endBlock, contractAddresses, [][]common.Hash{eventHashes})
 	if err != nil {

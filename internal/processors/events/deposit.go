@@ -3,13 +3,14 @@ package events
 import (
 	"bera_indexer/internal/models"
 	"bera_indexer/internal/utils"
+	"context"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-func (p *EventProcessor) processDeposit(log types.Log) (*models.Deposit, error) {
+func (p *EventProcessor) processDeposit(ctx context.Context, log types.Log) (*models.Deposit, error) {
 	abi := p.config.Contracts.DepositContract.ABI
 	decoded, err := abi.Unpack("Deposit", log.Data)
 	if err != nil {
@@ -18,6 +19,14 @@ func (p *EventProcessor) processDeposit(log types.Log) (*models.Deposit, error) 
 
 	pubkey := "0x" + common.Bytes2Hex(decoded[0].([]byte))
 	if !utils.IsValidValidator(p.config.Validators, pubkey) {
+		return nil, nil
+	}
+
+	exists, err := (*p.dbRepository).DoesTransactionExists(ctx, "deposits", log.TxHash.Hex(), log.Index)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if deposit exists: %w", err)
+	}
+	if exists {
 		return nil, nil
 	}
 
