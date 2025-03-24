@@ -3,7 +3,13 @@
 
 # Berachain Indexer
 
-A high-performance, ultra-efficient indexer for Berachain, designed to seamlessly track validator deposits, block rewards, reward distributions, and incentives from reward vaults. Optimized for speed, it can index at rates of up to 50,000 blocks per second—or even faster—depending on the RPC provider. With built-in support for multiple validators, it ensures accurate and reliable tracking at scale.
+A high-performance, ultra-efficient indexer for Berachain, designed to seamlessly track validator deposits, block rewards, reward distributions, and incentives from reward vaults. Optimized for speed, it can index at rates of up to 50,000 blocks per second or even faster, depending on the RPC provider. With built-in support for multiple validators, it ensures accurate and reliable tracking at scale.
+
+## Use Cases
+
+- **Wallets & Custodians** – Track staking rewards, delegations, and incentive distributions for users.
+- **Developers** – Build apps that integrate real-time staking rewards and incentive data.
+- **Analytics Platforms** – Provide insights on reward trends, validator earnings, and ecosystem incentive programs.
 
 <br />
 <div align="center">
@@ -55,18 +61,18 @@ A high-performance, ultra-efficient indexer for Berachain, designed to seamlessl
 
 ### Distribution Schema
 
-| Field           | Type      | Description                                           |
-| --------------- | --------- | ----------------------------------------------------- |
-| Validator       | string    | Validator ID                                          |
-| Receiver        | string    | Rewrard vault to which reward emission is distributed |
-| Amount          | string    | Reward emission amount                                |
-| TransactionHash | string    | Transaction hash                                      |
-| LogIndex        | uint      | Index of the log in the block                         |
-| BlockNumber     | uint64    | Block number in which transaction was included        |
-| BlockTimestamp  | time.Time | Timestamp of the block                                |
-| Fee             | float64   | Transaction fee                                       |
-| TransactionFrom | string    | Address that initiated the transaction                |
-| ToContract      | string    | Contract address receiving the transaction            |
+| Field           | Type      | Description                                          |
+| --------------- | --------- | ---------------------------------------------------- |
+| Validator       | string    | Validator ID                                         |
+| Receiver        | string    | Reward vault to which reward emission is distributed |
+| Amount          | string    | Reward emission amount                               |
+| TransactionHash | string    | Transaction hash                                     |
+| LogIndex        | uint      | Index of the log in the block                        |
+| BlockNumber     | uint64    | Block number in which transaction was included       |
+| BlockTimestamp  | time.Time | Timestamp of the block                               |
+| Fee             | float64   | Transaction fee                                      |
+| TransactionFrom | string    | Address that initiated the transaction               |
+| ToContract      | string    | Contract address receiving the transaction           |
 
 ### Incentive Schema
 
